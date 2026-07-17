@@ -652,7 +652,7 @@ static void DrawEntry(
 	backgroundColor = CG_WHITE;
     }
     if (state & TTK_STATE_FOCUS) {
-	DrawFocusRing(context, bounds, design);
+	DrawFocusRing(context, CGRectInset(bounds, 2, 2), design);
     } else {
 	FillBorder(context, CGRectInset(bounds,3,3), palette, design->radius);
     }
@@ -1211,6 +1211,10 @@ static void DrawButton(
 	 * "\n") for Push Buttons.
 	 */
 
+	if (state & TTK_STATE_FOCUS) {
+	    DrawFocusRing(context, CGRectInset(bounds, 2, -2), &pushbuttonDesign);
+	    bounds = CGRectInset(bounds, 4, 0);
+	}
 	if ((state & TTK_STATE_PRESSED || state & TTK_STATE_ALTERNATE) &&
 	    !(state & TTK_STATE_BACKGROUND)) {
 	    DrawAccentedButton(context, bounds, &pushbuttonDesign, state, isDark);
@@ -1272,6 +1276,9 @@ static void DrawButton(
 	bounds = CGRectOffset(CGRectMake(0, bounds.size.height / 2 - 8, 16, 16),
 			      bounds.origin.x, bounds.origin.y);
 	bounds = CGRectInset(bounds, 1, 1);
+	if (state & TTK_STATE_FOCUS) {
+	    DrawFocusRing(context, CGRectInset(bounds, -2, -2), &checkDesign);
+	}
 	hasIndicator = state & TTK_STATE_SELECTED || state & TTK_STATE_ALTERNATE;
 	if (hasIndicator &&
 	    !(state & TTK_STATE_BACKGROUND) &&
@@ -1288,6 +1295,9 @@ static void DrawButton(
 	bounds = CGRectOffset(CGRectMake(0, bounds.size.height / 2 - 9, 18, 18),
 					 bounds.origin.x, bounds.origin.y);
 	bounds = CGRectInset(bounds, 1, 1);
+	if (state & TTK_STATE_FOCUS) {
+	    DrawFocusRing(context, CGRectInset(bounds, -2, -2), &radioDesign);
+	}
 	hasIndicator = state & TTK_STATE_SELECTED || state & TTK_STATE_ALTERNATE;
 	if (hasIndicator &&
 	    !(state & TTK_STATE_BACKGROUND) &&
