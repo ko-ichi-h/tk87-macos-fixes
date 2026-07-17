@@ -709,6 +709,50 @@ XFillRectangles(
 /*
  *----------------------------------------------------------------------
  *
+ * TkMacOSXFillRectAlpha --
+ *
+ *	Fill a rectangle with the GC's foreground color blended at the given
+ *	alpha.  Used by the generic ttk image element (ttkLabel.c ImageDraw)
+ *	to wash out disabled images, since the stippled fill used for that
+ *	purpose on other platforms is not implemented in this X emulation.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	Draws onto the specified drawable.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TkMacOSXFillRectAlpha(
+    Display *display,		/* Display. */
+    Drawable d,			/* Draw on this. */
+    GC gc,			/* Use this GC's foreground color. */
+    int x, int y,		/* Upper left corner of rectangle. */
+    unsigned int width,		/* Size of rectangle. */
+    unsigned int height,
+    double alpha)		/* Opacity of the fill, 0.0 - 1.0. */
+{
+    MacDrawable *macWin = (MacDrawable *)d;
+    TkMacOSXDrawingContext dc;
+
+    LastKnownRequestProcessed(display)++;
+    if (!TkMacOSXSetupDrawingContext(d, gc, &dc)) {
+	return;
+    }
+    if (dc.context) {
+	CGContextSetAlpha(dc.context, alpha);
+	CGContextFillRect(dc.context, CGRectMake(
+		macWin->xOff + x, macWin->yOff + y, width, height));
+    }
+    TkMacOSXRestoreDrawingContext(&dc);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * TkMacOSXDrawSolidBorder --
  *
  *	Draws a border rectangle of specified thickness inside the bounding

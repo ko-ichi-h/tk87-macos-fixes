@@ -382,6 +382,31 @@ static void StippleOver(
 	Tk_FreeBitmapFromObj(tkwin, image->stippleObj);
     }
 }
+#else
+extern void TkMacOSXFillRectAlpha(Display *display, Drawable d, GC gc,
+	int x, int y, unsigned int width, unsigned int height, double alpha);
+
+/*
+ * DimOver --
+ *	Aqua replacement for StippleOver: the macOS X emulation does not
+ *	implement stippled fills, so wash the image out by filling its area
+ *	with the background color at 50% alpha instead.  Perceptually this
+ *	matches the gray50 stipple used on the other platforms.
+ */
+static void DimOver(
+    ImageElement *image, Tk_Window tkwin, Drawable d, int x, int y)
+{
+    XColor *color = Tk_GetColorFromObj(tkwin, image->backgroundObj);
+    unsigned long mask = GCForeground;
+    XGCValues gcvalues;
+    GC gc;
+
+    gcvalues.foreground = color->pixel;
+    gc = Tk_GetGC(tkwin, mask, &gcvalues);
+    TkMacOSXFillRectAlpha(Tk_Display(tkwin), d, gc,
+	    x, y, image->width, image->height, 0.5);
+    Tk_FreeGC(Tk_Display(tkwin), gc);
+}
 #endif
 
 static void ImageDraw(
@@ -406,18 +431,17 @@ static void ImageDraw(
 
     Tk_RedrawImage(image->tkimg, 0,0, width, height, d, b.x, b.y);
 
-    /* If we're disabled there's no state-specific 'disabled' image,
-     * stipple the image.
-     * @@@ Possibly: Don't do disabled-stippling at all;
-     * @@@ it's ugly and out of fashion.
-     * Do not stipple at all under Aqua, just draw the image: it shows up
-     * as a white rectangle otherwise.
+    /* If we're disabled and there's no state-specific 'disabled' image,
+     * gray the image out: stipple it with the background color, or on Aqua
+     * (where stipples are not implemented) blend the background color over
+     * it at 50% alpha.
      */
-
 
     if (state & TTK_STATE_DISABLED) {
 	if (TtkSelectImage(image->imageSpec, tkwin, 0ul) == image->tkimg) {
-#ifndef MAC_OSX_TK
+#ifdef MAC_OSX_TK
+	    DimOver(image, tkwin, d, b.x,b.y);
+#else
 	    StippleOver(image, tkwin, d, b.x,b.y);
 #endif
 	}
