@@ -25,7 +25,11 @@ namespace eval ttk::theme::aqua {
 		!focus systemSelectedTextColor}
 
 	# Button
-	ttk::style configure TButton -anchor center \
+	# KHC patch: give buttons whose -width is left unset a default minimum
+	# width of about "キャンセル" (a negative -width is a minimum in
+	# characters).  Buttons that set -width explicitly (including -width 0
+	# for a text-hugging button) override this.
+	ttk::style configure TButton -anchor center -width -8 \
 	    -foreground systemControlTextColor
 	ttk::style map TButton \
 	    -foreground {

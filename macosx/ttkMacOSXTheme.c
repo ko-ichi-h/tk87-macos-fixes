@@ -1643,6 +1643,17 @@ static void DrawGradientBorder(
  * +++ Button elements.
  */
 
+/*
+ * KHC patch: HITheme gives PushButtons a large horizontal content padding
+ * (about 20px per side) so that a text-sized button ends up far wider than
+ * its label.  We override the horizontal padding of PushButtons with this
+ * small fixed value (roughly one half-width space) so the button hugs its
+ * text.  Vertical padding and other button kinds (e.g. popup buttons, which
+ * need room for their arrow) are left untouched.
+ */
+
+#define PUSHBUTTON_TEXT_HPAD 6
+
 static void ButtonElementMinSize(
     void *clientData,
     int *minWidth,
@@ -1740,6 +1751,16 @@ static void ButtonElementSize(
 	CGRectGetMaxX(backgroundBounds) - CGRectGetMaxX(contentBounds);
     verticalPad = backgroundBounds.size.height - contentBounds.size.height;
     paddingPtr->top = paddingPtr->bottom = verticalPad / 2;
+
+    /*
+     * KHC patch: shrink the (large) horizontal padding of PushButtons.  Note
+     * that TkRoundedRectButton/TkRecessedButton/TkInlineButton have already
+     * been remapped to kThemePushButton above.
+     */
+
+    if (info.kind == kThemePushButton) {
+	paddingPtr->left = paddingPtr->right = PUSHBUTTON_TEXT_HPAD;
+    }
     if (info.kind == kThemePopupButton) {
 	paddingPtr->top += 1;
 	paddingPtr->bottom -= 1;
