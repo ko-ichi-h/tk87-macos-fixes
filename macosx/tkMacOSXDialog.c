@@ -433,14 +433,34 @@ static NSInteger showOpenSavePanel(
 		}];
 	    modalReturnCode = [panel runModal];
 	} else {
-	    [parent beginSheet: panel completionHandler:nil];
+	    /*
+	     * As a sheet (beginSheet:), the save/open panel opens with its name
+	     * field NOT the first responder: the base name stays selected in grey
+	     * and does not accept typing until the user clicks and presses Return.
+	     * (A free-floating NSSavePanel makes its name field first responder
+	     * and wires up its default "Save" button on its own; a sheet does
+	     * not.)  Run it as a free-floating modal panel instead: just activate
+	     * the app and runModal, and let NSSavePanel set up focus and the
+	     * default button itself (so a single Return saves).
+	     */
+	    (void)parent;
+	    [NSApp activateIgnoringOtherApps:YES];
 	    modalReturnCode = [panel runModal];
 	    [NSApp tkFilePanelDidEnd:panel
 			  returnCode:modalReturnCode
 			 contextInfo:&callbackInfo ];
-	    [parent endSheet:panel];
 	}
     } else {
+	/*
+	 * A parentless free-floating modal panel.  Activate the app first so the
+	 * panel becomes the active window when the modal session starts (Tk is
+	 * often not the active application, e.g. started from a shell rather than
+	 * a .app bundle; without this the panel opens inactive, its name field
+	 * selected in grey and not accepting typing until the user clicks it).
+	 * NSSavePanel then focuses its name field and wires up its default
+	 * button itself, so a single Return saves.
+	 */
+	[NSApp activateIgnoringOtherApps:YES];
 	modalReturnCode = [panel runModal];
 	[NSApp tkFilePanelDidEnd:panel
 		      returnCode:modalReturnCode
@@ -1102,26 +1122,15 @@ Tk_GetSaveFileObjCmd(
     }
 
     if (title) {
-	[savepanel setTitle:title];
-
 	/*
-	 * From OSX 10.11, the title string is silently ignored, if the save
-	 * panel is a sheet.  Prepend the title to the message in this case.
-	 * NOTE: should be conditional on OSX version, but -mmacosx-version-min
-	 * does not revert this behaviour.
+	 * We always run the save panel free-floating (not as a sheet), so the
+	 * title is shown normally and must NOT be duplicated into the message
+	 * (which previously happened for the -parent/sheet case and made the
+	 * title text appear twice).
 	 */
 
-	if (haveParentOption) {
-	    if (message) {
-		NSString *fullmessage =
-		    [[NSString alloc] initWithFormat:@"%@\n%@",title,message];
-		[message release];
-		[title release];
-		message = fullmessage;
-	    } else {
-		message = title;
-	    }
-	}
+	[savepanel setTitle:title];
+	[title release];
     }
 
     if (message) {
