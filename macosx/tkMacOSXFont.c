@@ -346,8 +346,20 @@ InitFont(
     nsFont = [nsFont screenFontWithRenderingMode:renderingMode];
     GetTkFontAttributesForNSFont(nsFont, faPtr);
     fmPtr = &fontPtr->font.fm;
-    fmPtr->ascent = (int)floor([nsFont ascender] + [nsFont leading] + 0.5);
-    fmPtr->descent = (int)floor(-[nsFont descender] + 0.5);
+
+    /*
+     * Distribute the leading evenly above and below the glyph box instead of
+     * adding all of it to the ascent.  Fonts like Hiragino Sans report a huge
+     * leading (0.5em); putting it all in the ascent pushes the baseline down
+     * by leading/2 whenever widgets center a linespace-tall box vertically.
+     */
+
+    {
+	CGFloat leading = [nsFont leading];
+
+	fmPtr->ascent = (int)floor([nsFont ascender] + leading / 2 + 0.5);
+	fmPtr->descent = (int)floor(-[nsFont descender] + leading / 2 + 0.5);
+    }
     fmPtr->maxWidth = (int)[nsFont maximumAdvancement].width;
     fmPtr->fixed = [nsFont isFixedPitch];   /* Does not work for all fonts */
 

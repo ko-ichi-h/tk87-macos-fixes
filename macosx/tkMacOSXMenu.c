@@ -811,10 +811,31 @@ TkpConfigureMenuEntry(
 
 #endif
 
-    attributedTitle = [[NSAttributedString alloc] initWithString:title
-	attributes:attributes];
-    [menuItem setAttributedTitle:attributedTitle];
-    [attributedTitle release];
+    /*
+     * Fonts with nonzero leading (e.g. Hiragino Sans: 0.5em) break AppKit's
+     * vertical centering of custom menu item titles: the glyphs sit half the
+     * leading too high, and the menu layout ignores compensating attributes
+     * (NSBaselineOffsetAttributeName shifts by a fixed amount regardless of
+     * its value, NSParagraphStyle line height clamps do nothing).  For such
+     * fonts fall back to the plain title, i.e. the standard menu font; CJK
+     * glyphs are then rendered through the system font cascade (Hiragino
+     * Sans) anyway.  TK_MENU_KEEP_CUSTOM_FONT=1 restores the old behavior.
+     */
+
+    static int keepCustomFont = -1;
+    if (keepCustomFont == -1) {
+	keepCustomFont = getenv("TK_MENU_KEEP_CUSTOM_FONT") ? 1 : 0;
+    }
+    NSFont *itemFont = [attributes objectForKey:NSFontAttributeName];
+    CGFloat itemLeading = itemFont ? [itemFont leading] : 0.0;
+    if (itemLeading > 0.0 && !keepCustomFont) {
+	[menuItem setAttributedTitle:nil];
+    } else {
+	attributedTitle = [[NSAttributedString alloc] initWithString:title
+	    attributes:attributes];
+	[menuItem setAttributedTitle:attributedTitle];
+	[attributedTitle release];
+    }
     [menuItem setEnabled:(mePtr->state != ENTRY_DISABLED)];
     [menuItem setState:((mePtr->type == CHECK_BUTTON_ENTRY ||
 	    mePtr->type == RADIO_BUTTON_ENTRY) && mePtr->indicatorOn &&
