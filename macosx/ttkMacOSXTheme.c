@@ -232,14 +232,32 @@ static GrayPalette LookupGrayPalette(
 static CGRect NormalizeButtonBounds(
     ThemeButtonParams *params,
     CGRect bounds,
-    int isDark)
+    int isDark,
+    int labelHeight)
 {
     SInt32 height;
 
     if (params->heightMetric != NoThemeMetric) {
 	ChkErr(GetThemeMetric, params->heightMetric, &height);
 	height += 2;
-	bounds.origin.y += round(1 + (bounds.size.height - height) / 2);
+
+	/*
+	 * KHC patch: Apple draws these buttons at a fixed standard height and
+	 * centers them within the space Ttk allocated.  A large -font, though,
+	 * makes the label taller than the standard height, so it used to spill
+	 * out above and below the button.  Grow the button graphic just enough
+	 * to enclose the label (its line height plus a 1px margin top and
+	 * bottom) when that exceeds the standard height; small and normal fonts
+	 * keep the standard height exactly, so a font-size-9 button looks the
+	 * same as before.  The graphic is centered symmetrically (no downward
+	 * fudge) so the focus ring, which is drawn 2px outside the graphic,
+	 * keeps its clearance at both the top and the bottom.
+	 */
+
+	if (labelHeight + 2 > height) {
+	    height = labelHeight + 2;
+	}
+	bounds.origin.y += round((bounds.size.height - height) / 2);
 	bounds.size.height = height;
     }
     switch (params->kind) {
@@ -1654,6 +1672,22 @@ static void DrawGradientBorder(
 
 #define PUSHBUTTON_TEXT_HPAD 6
 
+/*
+ * KHC patch: the button element carries the widget's -font so that
+ * ButtonElementDraw can measure the label's line height and, if it exceeds
+ * the fixed standard button height, grow the button graphic to enclose it
+ * (see NormalizeButtonBounds).
+ */
+
+typedef struct {
+    Tcl_Obj *fontObj;
+} ButtonElement;
+
+static const Ttk_ElementOptionSpec ButtonElementOptions[] = {
+    { "-font", TK_OPTION_FONT, offsetof(ButtonElement, fontObj), DEFAULT_FONT },
+    { NULL, TK_OPTION_BOOLEAN, 0, NULL }
+};
+
 static void ButtonElementMinSize(
     void *clientData,
     int *minWidth,
@@ -1769,7 +1803,7 @@ static void ButtonElementSize(
 
 static void ButtonElementDraw(
     void *clientData,
-    TCL_UNUSED(void *), /* elementRecord */
+    void *elementRecord,
     Tk_Window tkwin,
     Drawable d,
     Ttk_Box b,
@@ -1806,9 +1840,15 @@ static void ButtonElementDraw(
      * Other buttons have a maximum height.   We have to deal with that.
      */
 
-    default:
-	bounds = NormalizeButtonBounds(params, bounds, isDark);
+    default: {
+	ButtonElement *elem = (ButtonElement *)elementRecord;
+	Tk_Font tkfont = Tk_GetFontFromObj(tkwin, elem->fontObj);
+	Tk_FontMetrics fm;
+
+	Tk_GetFontMetrics(tkfont, &fm);
+	bounds = NormalizeButtonBounds(params, bounds, isDark, fm.linespace);
 	break;
+    }
     }
 
     /* We do our own drawing on new systems.*/
@@ -1874,8 +1914,8 @@ static void ButtonElementDraw(
 
 static Ttk_ElementSpec ButtonElementSpec = {
     TK_STYLE_VERSION_2,
-    sizeof(NullElement),
-    TtkNullElementOptions,
+    sizeof(ButtonElement),
+    ButtonElementOptions,
     ButtonElementSize,
     ButtonElementDraw
 };
