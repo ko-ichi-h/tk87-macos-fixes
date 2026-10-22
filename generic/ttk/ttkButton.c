@@ -54,11 +54,14 @@ typedef struct
     BasePart	base;
 } Base;
 
+/*
+ * KHC patch: -justify is not in BaseOptionSpecs but is declared separately
+ * by ttk::label (default "left", as in Tk 8.6) and, through
+ * ButtonBaseOptionSpecs, by the button widgets (no default; see there).
+ */
+
 static const Tk_OptionSpec BaseOptionSpecs[] =
 {
-    {TK_OPTION_JUSTIFY, "-justify", "justify", "Justify",
-	"left", offsetof(Base,base.justifyObj), TCL_INDEX_NONE,
-	TK_OPTION_NULL_OK,0,GEOMETRY_CHANGED },
     {TK_OPTION_STRING, "-text", "text", "Text", "",
 	offsetof(Base,base.textObj), TCL_INDEX_NONE,
 	0,0,GEOMETRY_CHANGED },
@@ -97,6 +100,24 @@ static const Tk_OptionSpec BaseOptionSpecs[] =
 	0,0,STATE_CHANGED },
 
     WIDGET_INHERIT_OPTIONS(ttkCoreOptionSpecs)
+};
+
+/*
+ * KHC patch: the button widgets (ttk::button, ttk::checkbutton,
+ * ttk::radiobutton, ttk::menubutton) got -justify with TIP 442.  Give it no
+ * widget default (it was "left"), so that a style's -justify (e.g.
+ * "ttk::style configure X.TButton -justify center") takes effect as it did
+ * in Tk 8.6.  When neither the widget nor the style sets it, the text
+ * element's own default "left" applies.
+ */
+
+static const Tk_OptionSpec ButtonBaseOptionSpecs[] =
+{
+    {TK_OPTION_JUSTIFY, "-justify", "justify", "Justify",
+	NULL, offsetof(Base,base.justifyObj), TCL_INDEX_NONE,
+	TK_OPTION_NULL_OK,0,GEOMETRY_CHANGED },
+
+    WIDGET_INHERIT_OPTIONS(BaseOptionSpecs)
 };
 
 /*
@@ -261,6 +282,9 @@ static const Tk_OptionSpec LabelOptionSpecs[] =
     {TK_OPTION_ANCHOR, "-anchor", "anchor", "Anchor",
 	"w", offsetof(Label,label.anchorObj), TCL_INDEX_NONE,
 	0, 0, GEOMETRY_CHANGED},
+    {TK_OPTION_JUSTIFY, "-justify", "justify", "Justify",
+	"left", offsetof(Label,base.justifyObj), TCL_INDEX_NONE,
+	TK_OPTION_NULL_OK,0,GEOMETRY_CHANGED },
     {TK_OPTION_PIXELS, "-wraplength", "wrapLength", "WrapLength",
 	NULL, offsetof(Label, label.wrapLengthObj), TCL_INDEX_NONE,
 	TK_OPTION_NULL_OK,0,GEOMETRY_CHANGED /*SB: SIZE_CHANGED*/ },
@@ -331,7 +355,7 @@ static const Tk_OptionSpec ButtonOptionSpecs[] =
 	0, ttkDefaultStrings, DEFAULTSTATE_CHANGED},
 
     WIDGET_TAKEFOCUS_TRUE,
-    WIDGET_INHERIT_OPTIONS(BaseOptionSpecs)
+    WIDGET_INHERIT_OPTIONS(ButtonBaseOptionSpecs)
 };
 
 static int ButtonConfigure(Tcl_Interp *interp, void *recordPtr, int mask)
@@ -449,7 +473,7 @@ static const Tk_OptionSpec CheckbuttonOptionSpecs[] =
 	0,0,0},
 
     WIDGET_TAKEFOCUS_TRUE,
-    WIDGET_INHERIT_OPTIONS(BaseOptionSpecs)
+    WIDGET_INHERIT_OPTIONS(ButtonBaseOptionSpecs)
 };
 
 /*
@@ -655,7 +679,7 @@ static const Tk_OptionSpec RadiobuttonOptionSpecs[] =
 	0,0,0},
 
     WIDGET_TAKEFOCUS_TRUE,
-    WIDGET_INHERIT_OPTIONS(BaseOptionSpecs)
+    WIDGET_INHERIT_OPTIONS(ButtonBaseOptionSpecs)
 };
 
 /*
@@ -827,7 +851,7 @@ static const Tk_OptionSpec MenubuttonOptionSpecs[] =
 	0, directionStrings, GEOMETRY_CHANGED},
 
     WIDGET_TAKEFOCUS_TRUE,
-    WIDGET_INHERIT_OPTIONS(BaseOptionSpecs)
+    WIDGET_INHERIT_OPTIONS(ButtonBaseOptionSpecs)
 };
 
 static const Ttk_Ensemble MenubuttonCommands[] = {
