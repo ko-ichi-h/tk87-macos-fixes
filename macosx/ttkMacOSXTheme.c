@@ -1676,15 +1676,18 @@ static void DrawGradientBorder(
  * KHC patch: the button element carries the widget's -font so that
  * ButtonElementDraw can measure the label's line height and, if it exceeds
  * the fixed standard button height, grow the button graphic to enclose it
- * (see NormalizeButtonBounds).
+ * (see NormalizeButtonBounds).  It also carries -text so that a label with
+ * explicit newlines ("...\n...") is measured as that many lines.
  */
 
 typedef struct {
     Tcl_Obj *fontObj;
+    Tcl_Obj *textObj;
 } ButtonElement;
 
 static const Ttk_ElementOptionSpec ButtonElementOptions[] = {
     { "-font", TK_OPTION_FONT, offsetof(ButtonElement, fontObj), DEFAULT_FONT },
+    { "-text", TK_OPTION_STRING, offsetof(ButtonElement, textObj), "" },
     { NULL, TK_OPTION_BOOLEAN, 0, NULL }
 };
 
@@ -1844,9 +1847,20 @@ static void ButtonElementDraw(
 	ButtonElement *elem = (ButtonElement *)elementRecord;
 	Tk_Font tkfont = Tk_GetFontFromObj(tkwin, elem->fontObj);
 	Tk_FontMetrics fm;
+	int lines = 1;
 
+	if (elem->textObj) {
+	    const char *p = Tcl_GetString(elem->textObj);
+
+	    for (; *p; p++) {
+		if (*p == '\n') {
+		    lines++;
+		}
+	    }
+	}
 	Tk_GetFontMetrics(tkfont, &fm);
-	bounds = NormalizeButtonBounds(params, bounds, isDark, fm.linespace);
+	bounds = NormalizeButtonBounds(params, bounds, isDark,
+		lines * fm.linespace);
 	break;
     }
     }
